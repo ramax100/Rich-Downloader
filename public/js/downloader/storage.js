@@ -60,7 +60,7 @@ async function saveWithBrowser(actualDownloadUrl, fileName, downloadHeaders) {
   window._moriWebDownloadAbort = controller;
   let response;
   try {
-    response = await fetch("api/download", {
+    response = await fetch("/api/download", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

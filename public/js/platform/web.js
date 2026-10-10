@@ -36,7 +36,7 @@ function webCopy() {
 
 async function updateGatewayBadge(badge, copy) {
   try {
-    const response = await fetch("api/health", { cache: "no-store" });
+    const response = await fetch("/api/health", { cache: "no-store" });
     if (!response.ok) throw new Error("Gateway unavailable");
     badge.classList.add("is-ready");
     badge.title = copy.gatewayReady;

@@ -304,7 +304,7 @@ export async function scraperFetch(options, serverName = "Server") {
       );
       let proxyRes;
       try {
-        proxyRes = await fetch("api/http", {
+        proxyRes = await fetch("/api/http", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

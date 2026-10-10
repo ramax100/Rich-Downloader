@@ -227,6 +227,30 @@ function responseHeaders(response) {
 }
 
 async function readJsonBody(req) {
+  // Vercel Node Functions pre-parse JSON into request.body. The local server
+  // still exposes the original IncomingMessage stream, so support both forms.
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === "object" && !Buffer.isBuffer(req.body)) {
+      const serialized = JSON.stringify(req.body);
+      if (Buffer.byteLength(serialized) > maxRequestBytes) {
+        throw Object.assign(new Error("Request body is too large."), { statusCode: 413 });
+      }
+      return req.body;
+    }
+
+    const parsedBody = Buffer.isBuffer(req.body)
+      ? req.body.toString("utf8")
+      : String(req.body);
+    if (Buffer.byteLength(parsedBody) > maxRequestBytes) {
+      throw Object.assign(new Error("Request body is too large."), { statusCode: 413 });
+    }
+    try {
+      return JSON.parse(parsedBody || "{}");
+    } catch {
+      throw Object.assign(new Error("Request body must be valid JSON."), { statusCode: 400 });
+    }
+  }
+
   const chunks = [];
   let total = 0;
   for await (const chunk of req) {

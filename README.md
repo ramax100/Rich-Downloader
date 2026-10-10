@@ -43,7 +43,7 @@ The deployable static output is generated in `dist/`. The Node server is still r
 
 ## Deploy to Vercel
 
-The repository includes `vercel.json` and three Node.js functions under `api/`.
+The repository includes `vercel.json` and three Node.js functions under `api/`. Vercel deploys the source directly: static routes are rewritten to `public/`, while `/api/*` is detected as Node.js Functions. No custom build command is required.
 
 ```bash
 npm install --global vercel

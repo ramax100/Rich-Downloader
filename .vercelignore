@@ -3,7 +3,6 @@ android/
 ios/
 src-tauri/
 landing/
-assets/
 node_modules/
 dist/
 

@@ -8,6 +8,9 @@
     "api/http.js": {
       "maxDuration": 60
     },
+    "api/aio.js": {
+      "maxDuration": 60
+    },
     "api/download.js": {
       "maxDuration": 60
     }

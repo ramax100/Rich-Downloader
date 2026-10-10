@@ -56,6 +56,7 @@ No GitHub integration is required when deploying with the Vercel CLI. The CLI up
 
 Optional environment variables:
 
+- `SANKAVOLLEREI_API_KEY`: required only when using Server 3 (Sanka AIO).
 - `MORI_PROXY_HOSTS`: comma-separated additional trusted hostname suffixes.
 - `MORI_MAX_DOWNLOAD_BYTES`: maximum gateway download size in bytes.
 - `PORT`: local server port; defaults to `4173`.

@@ -41,7 +41,7 @@ const allowedHostSuffixes = new Set([
   "ytmp3.gg", "ytmp3.mobi", "convert1s.com", "ymcdn.org", "lilillliiillliillii.shop",
   "spotidown.app", "spotimate.app", "soundloaders.app", "aplmate.com", "pindown.io",
   "snaptik.app", "snapcdn.app", "rapidcdn.app", "tweeload.com",
-  "threadster.app", "rapidsave.com", "sechno.com",
+  "threadster.app", "rapidsave.com", "sechno.com", "sankavollerei.web.id",
 ]);
 
 for (const host of (process.env.MORI_PROXY_HOSTS || "").split(",")) {
@@ -226,6 +226,141 @@ function responseHeaders(response) {
   return headers;
 }
 
+function normalizeAioPayload(payload, sourceUrl) {
+  if (!payload || typeof payload !== "object") {
+    throw Object.assign(new Error("Server 3 returned an invalid response."), { statusCode: 502 });
+  }
+  if (payload.status === false || payload.success === false) {
+    throw Object.assign(
+      new Error(payload.message || payload.error || "Server 3 could not process this URL."),
+      { statusCode: 502 },
+    );
+  }
+
+  const root = payload.result ?? payload.data ?? payload;
+  const metadata =
+    (root && typeof root === "object" && !Array.isArray(root)
+      ? root.metadata ?? root.videoMetadata ?? root.info ?? root
+      : {}) || {};
+  const downloads = [];
+  const seen = new Set();
+
+  const addDownload = (rawUrl, item = {}, hint = "") => {
+    if (typeof rawUrl !== "string") return;
+    let mediaUrl;
+    try {
+      mediaUrl = new URL(rawUrl);
+    } catch {
+      return;
+    }
+    if (!["http:", "https:"].includes(mediaUrl.protocol) || seen.has(mediaUrl.href)) return;
+    seen.add(mediaUrl.href);
+
+    const quality = String(
+      item.quality ?? item.resolution ?? item.label ?? item.size ?? "",
+    ).trim();
+    const format = String(
+      item.format ?? item.extension ?? item.ext ?? item.mimeType ?? item.mime ?? hint,
+    ).trim();
+    const descriptor = `${format} ${quality} ${mediaUrl.pathname}`.toLowerCase();
+    let type;
+    if (/audio|mp3|m4a|aac|wav|flac|ogg|opus/.test(descriptor)) {
+      type = format && !format.includes("/") ? format.toUpperCase() : "MP3";
+    } else if (/image|photo|jpe?g|png|webp|gif/.test(descriptor)) {
+      type = "PHOTO";
+    } else {
+      const videoFormat =
+        format && !format.includes("/") && !/^video$/i.test(format)
+          ? format.toUpperCase()
+          : "MP4";
+      type = quality && !videoFormat.toLowerCase().includes(quality.toLowerCase())
+        ? `${videoFormat} ${quality}`
+        : videoFormat;
+    }
+
+    downloads.push({
+      url: mediaUrl.href,
+      type,
+      ...(quality ? { quality } : {}),
+      ...(typeof item.thumbnail === "string" ? { thumbnail: item.thumbnail } : {}),
+      isMirror: Boolean(item.isMirror),
+    });
+  };
+
+  const collect = (node, hint = "", depth = 0) => {
+    if (node == null || depth > 4) return;
+    if (typeof node === "string") {
+      addDownload(node, {}, hint);
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((entry) => collect(entry, hint, depth + 1));
+      return;
+    }
+    if (typeof node !== "object") return;
+
+    const directUrl =
+      node.url ?? node.link ?? node.downloadUrl ?? node.download_url ??
+      node.fileUrl ?? node.file_url ?? node.src;
+    if (typeof directUrl === "string") addDownload(directUrl, node, hint);
+
+    const variantKeys = [
+      "video", "videoUrl", "video_url", "audio", "audioUrl", "audio_url",
+      "hd", "sd", "download", "downloadLink", "download_link",
+    ];
+    for (const key of variantKeys) {
+      const value = node[key];
+      if (typeof value === "string") addDownload(value, node, key);
+      else if (value && typeof value === "object") collect(value, key, depth + 1);
+    }
+
+    const containerKeys = [
+      "downloads", "medias", "media", "links", "formats", "urls", "items",
+    ];
+    for (const key of containerKeys) {
+      if (node[key] != null) collect(node[key], key, depth + 1);
+    }
+  };
+
+  collect(root);
+  if (root !== payload) collect(payload.downloads ?? payload.medias ?? payload.media);
+
+  if (!downloads.length) {
+    throw Object.assign(new Error("Server 3 returned no downloadable media."), { statusCode: 502 });
+  }
+
+  const categoryRank = (download) =>
+    /mp4|video|\d+p/i.test(download.type) ? 0 :
+      /photo|image|jpe?g|png|webp/i.test(download.type) ? 1 : 2;
+  downloads.sort((a, b) => categoryRank(a) - categoryRank(b));
+
+  const firstString = (...values) =>
+    values.find((value) => typeof value === "string" && value.trim())?.trim() || "";
+  return {
+    status: true,
+    result: {
+      title: firstString(metadata.title, root?.title, payload.title, "Media Download"),
+      author: firstString(
+        metadata.author,
+        metadata.creator,
+        metadata.uploader,
+        root?.author,
+        payload.author,
+        "Creator",
+      ),
+      thumbnail: firstString(
+        metadata.thumbnail,
+        metadata.cover,
+        metadata.image,
+        root?.thumbnail,
+        payload.thumbnail,
+      ),
+      downloads,
+      sourceUrl,
+    },
+  };
+}
+
 async function readJsonBody(req) {
   // Vercel Node Functions pre-parse JSON into request.body. The local server
   // still exposes the original IncomingMessage stream, so support both forms.
@@ -284,6 +419,55 @@ async function handleHttpGateway(req, res) {
     data,
     url: result.finalUrl,
   });
+}
+
+async function handleAioGateway(req, res) {
+  const { url } = await readJsonBody(req);
+  if (!url) return sendJson(res, 400, { error: "A media URL is required." });
+
+  let source;
+  try {
+    source = new URL(url);
+  } catch {
+    return sendJson(res, 400, { error: "Invalid media URL." });
+  }
+  if (!["http:", "https:"].includes(source.protocol) || source.username || source.password) {
+    return sendJson(res, 400, { error: "Only public HTTP(S) media URLs are supported." });
+  }
+
+  const apiKey = process.env.SANKAVOLLEREI_API_KEY;
+  if (!apiKey) {
+    return sendJson(res, 503, {
+      error: "Server 3 is not configured. Set SANKAVOLLEREI_API_KEY in Vercel.",
+    });
+  }
+
+  const endpoint = new URL("https://www.sankavollerei.web.id/download/aio");
+  endpoint.searchParams.set("apikey", apiKey);
+  endpoint.searchParams.set("url", source.href);
+
+  const upstream = await fetchWithSafeRedirects(endpoint.href, {
+    method: "GET",
+    headers: new Headers({
+      Accept: "application/json",
+      "User-Agent": "Rich-Downloader/1.0",
+    }),
+  });
+  if (!upstream.response.ok) {
+    return sendJson(res, 502, {
+      error: `Server 3 returned HTTP ${upstream.response.status}.`,
+    });
+  }
+
+  const responseText = await readResponseText(upstream.response);
+  let payload;
+  try {
+    payload = JSON.parse(responseText);
+  } catch {
+    return sendJson(res, 502, { error: "Server 3 returned invalid JSON." });
+  }
+
+  sendJson(res, 200, normalizeAioPayload(payload, source.href));
 }
 
 function safeFilename(value) {
@@ -392,9 +576,15 @@ async function handleRequest(req, res) {
     if (pathname.startsWith("/api/")) {
       if (!validateApiRequest(req, res, pathname)) return;
       if (pathname === "/api/health" && req.method === "GET") {
-        return sendJson(res, 200, { ok: true, service: "mori-web", allowedHosts: allowedHostSuffixes.size });
+        return sendJson(res, 200, {
+          ok: true,
+          service: "mori-web",
+          allowedHosts: allowedHostSuffixes.size,
+          server3Configured: Boolean(process.env.SANKAVOLLEREI_API_KEY),
+        });
       }
       if (pathname === "/api/http" && req.method === "POST") return await handleHttpGateway(req, res);
+      if (pathname === "/api/aio" && req.method === "POST") return await handleAioGateway(req, res);
       if (pathname === "/api/download" && req.method === "POST") return await handleDownloadGateway(req, res);
       return sendJson(res, 404, { error: "Unknown API endpoint." });
     }

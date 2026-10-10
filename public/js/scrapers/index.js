@@ -206,3 +206,46 @@ export async function scrapeFacebook(...args) { return (await loadCoreScrapers()
 export async function scrapeBandcamp(...args) { return (await loadCoreScrapers()).scrapeBandcamp(...args); }
 export async function scrapeReddit(...args) { return (await loadCoreScrapers()).scrapeReddit(...args); }
 export async function scrapeTeraBox(...args) { return (await loadCoreScrapers()).scrapeTeraBox(...args); }
+
+export async function scrapeAio(url) {
+  try {
+    const response = await fetch("/api/aio", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mori-Web": "1",
+      },
+      body: JSON.stringify({ url }),
+    });
+    const text = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      return {
+        status: false,
+        statusCode: response.status,
+        message:
+          payload?.error ||
+          text.trim().slice(0, 240) ||
+          `Server 3 returned HTTP ${response.status}.`,
+      };
+    }
+    if (!payload?.status || !Array.isArray(payload?.result?.downloads)) {
+      return {
+        status: false,
+        message: payload?.message || "Server 3 returned an invalid response.",
+      };
+    }
+    return payload;
+  } catch (error) {
+    return {
+      status: false,
+      message: `Server 3 request failed: ${error?.message || "Network error"}`,
+    };
+  }
+}

@@ -293,6 +293,7 @@ export default {
   "retry-5": "5 Percobaan",
   "server-1": "Server 1 (Utama)",
   "server-2": "Server 2 (Cadangan)",
+  "server-3": "Server 3 (Sanka AIO)",
   "server-ask": "Selalu Tanya",
   "server-desc-instagram": "Server 1: InDown (Multi Kualitas MP4 / Foto)\nServer 2: SaveVid (Cepat MP4 / Story / Reel)",
   "server-desc-spotify": "Server 1: SpotiDown (Playlist & Lagu Tunggal)\nServer 2: SoundLoaders (Playlist & Lagu Tunggal)",

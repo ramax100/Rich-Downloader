@@ -293,6 +293,7 @@ export default {
   "retry-5": "5 Attempts",
   "server-1": "Server 1 (Primary)",
   "server-2": "Server 2 (Backup)",
+  "server-3": "Server 3 (Sanka AIO)",
   "server-ask": "Always Ask",
   "server-desc-instagram": "Server 1: InDown (Multi Quality MP4 / Photos)\nServer 2: SaveVid (Fast MP4 / Story / Reel)",
   "server-desc-spotify": "Server 1: SpotiDown (Playlist & Single Track)\nServer 2: SoundLoaders (Playlist & Single Track)",

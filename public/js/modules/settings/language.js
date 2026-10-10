@@ -149,9 +149,12 @@ export function updateCustomSelectsUI() {
 
   const currentServer = localStorage.getItem("mori_prefer_server") || "ask";
   const preferServerText = document.getElementById("preferServerText");
+  const currentServerKey = currentServer.startsWith("server")
+    ? `server-${currentServer.slice("server".length)}`
+    : `server-${currentServer}`;
   if (preferServerText)
     preferServerText.textContent =
-      lang[`server-${currentServer}`] || currentServer;
+      lang[currentServerKey] || currentServer;
 
   const currentFont = localStorage.getItem("mori_font") || "display";
   const fontText = document.getElementById("fontText");

@@ -20,6 +20,7 @@ import {
   scrapePixiv,
   scrapeReddit,
   scrapeTeraBox,
+  scrapeAio,
 } from "../scrapers/index.js";
 
 import { cleanUrl } from "../utils/index.js";
@@ -90,7 +91,9 @@ export async function analyzeUrlSilent(url, preferServer = "auto") {
   try {
     let data = null;
 
-    if (
+    if (preferServer === "server3") {
+      data = await scrapeAio(url);
+    } else if (
       url.includes("tiktok.com") ||
       url.includes("vt.tiktok.com") ||
       url.includes("vm.tiktok.com")

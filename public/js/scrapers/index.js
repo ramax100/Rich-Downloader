@@ -8,11 +8,35 @@ import { scraperFetch } from "./httpHelper.js";
 
 export * from "./httpHelper.js";
 
-export const BUNDLED_SCRAPER_VERSION = 3;
+export const BUNDLED_SCRAPER_VERSION = 4;
 window.__MORI_BUNDLED_SCRAPER_VERSION__ = BUNDLED_SCRAPER_VERSION;
+
+// Keep the minified scraper core focused on extraction while routing all HTTP
+// through the current platform-aware transport implementation.
+window.__moriScraperFetch = scraperFetch;
 
 // Expose deps to the bundled IIFE core
 window.__moriDeps = { utils, urlUtils, core };
+
+function injectLiveHttpTransport(scriptText) {
+  const transportStart = 'async function A(t,a="Server"){';
+  const nextFunction = "function M(t,a,e=null){";
+  const startIndex = scriptText.indexOf(transportStart);
+  const endIndex = scriptText.indexOf(nextFunction, startIndex);
+
+  if (startIndex === -1 || endIndex === -1) {
+    console.warn("[Mori] Bundled HTTP transport marker was not found.");
+    return scriptText;
+  }
+
+  const liveTransport =
+    'async function A(t,a="Server"){return window.__moriScraperFetch(t,a)}';
+  return (
+    scriptText.slice(0, startIndex) +
+    liveTransport +
+    scriptText.slice(endIndex)
+  );
+}
 
 let _corePromise = null;
 
@@ -69,6 +93,8 @@ async function loadCoreScrapers() {
       if (!scriptText) {
         scriptText = await fetchBundleText();
       }
+
+      scriptText = injectLiveHttpTransport(scriptText);
 
       const fn = new Function(
         scriptText +

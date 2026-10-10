@@ -1,7 +1,7 @@
 {
-  "scraperVersion": 3,
-  "updatedAt": 1790796947466,
+  "scraperVersion": 4,
+  "updatedAt": 1791664804488,
   "minAppVersion": "4.3.0",
-  "sourceHash": "6991a3ac4abb562a60158e161d8ea9a5bb484bb4f73c5c82410eed091d406834",
-  "changelog": "Fix several scrapers and add new scrapers for Reddit and TeraBox"
+  "sourceHash": "4cafdce3d21e46ae11c37690d37f1bcc6aa432f4cac4c2fcea714a200d07544c",
+  "changelog": "Route bundled scraper requests through the web gateway transport"
 }

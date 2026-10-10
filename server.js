@@ -401,8 +401,15 @@ async function handleRequest(req, res) {
     await handleStatic(req, res, pathname);
   } catch (error) {
     if (!error.statusCode || error.statusCode >= 500) console.error("[Mori Web]", error);
-    if (res.headersSent) res.destroy(error);
-    else sendJson(res, error.statusCode || 502, { error: error.message || "Gateway request failed." });
+    if (res.headersSent) {
+      res.destroy(error);
+    } else {
+      const causeCode = error?.cause?.code;
+      const message = error.message || "Gateway request failed.";
+      sendJson(res, error.statusCode || 502, {
+        error: causeCode ? `${message} (${causeCode})` : message,
+      });
+    }
   }
 }
 

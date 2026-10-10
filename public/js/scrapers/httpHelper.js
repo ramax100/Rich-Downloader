@@ -316,9 +316,22 @@ export async function scraperFetch(options, serverName = "Server") {
       } finally {
         clearTimeout(proxyTimeout);
       }
-      const proxyPayload = await proxyRes.json();
+      const proxyText = await proxyRes.text();
+      let proxyPayload;
+      try {
+        proxyPayload = JSON.parse(proxyText);
+      } catch (_) {
+        proxyPayload = null;
+      }
       if (!proxyRes.ok) {
-        throw new Error(proxyPayload?.error || `Web gateway returned ${proxyRes.status}`);
+        const gatewayMessage =
+          proxyPayload?.error ||
+          proxyText.trim().slice(0, 240) ||
+          `Web gateway returned ${proxyRes.status}`;
+        throw new Error(gatewayMessage);
+      }
+      if (!proxyPayload || typeof proxyPayload !== "object") {
+        throw new Error("Web gateway returned an invalid response.");
       }
       response = {
         status: proxyPayload.status,
@@ -347,29 +360,36 @@ export async function scraperFetch(options, serverName = "Server") {
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), getRequestTimeout());
-      let res;
       try {
-        res = await fetch(fetchUrl, {
-          method,
-          headers: browserHeaders,
-          body: method === "GET" || method === "HEAD" ? undefined : body,
-          signal: controller.signal,
-          credentials: "omit",
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
+        let res;
+        try {
+          res = await fetch(fetchUrl, {
+            method,
+            headers: browserHeaders,
+            body: method === "GET" || method === "HEAD" ? undefined : body,
+            signal: controller.signal,
+            credentials: "omit",
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
-      const resData =
-        options.responseType === "arraybuffer"
-          ? await res.arrayBuffer()
-          : await res.text();
-      response = {
-        status: res.status,
-        headers: Object.fromEntries(res.headers.entries()),
-        data: resData,
-        url: res.url,
-      };
+        const resData =
+          options.responseType === "arraybuffer"
+            ? await res.arrayBuffer()
+            : await res.text();
+        response = {
+          status: res.status,
+          headers: Object.fromEntries(res.headers.entries()),
+          data: resData,
+          url: res.url,
+        };
+      } catch (directError) {
+        clearTimeout(timeoutId);
+        const gatewayMessage = gatewayError?.message || "Web gateway failed";
+        const directMessage = directError?.message || "browser fallback failed";
+        throw new Error(`${gatewayMessage} (direct fallback: ${directMessage})`);
+      }
     }
   }
 

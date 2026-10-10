@@ -1,0 +1,17 @@
+# Native targets are not needed by the web deployment.
+android/
+ios/
+src-tauri/
+landing/
+assets/
+node_modules/
+dist/
+
+# Local artifacts and repository metadata.
+.kiro/
+.git/
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.tar.gz

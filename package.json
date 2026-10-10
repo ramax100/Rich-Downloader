@@ -1,0 +1,26 @@
+{
+  "name": "rich-downloader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser-ready media downloader with a secure same-origin gateway",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "dev:web": "node server.js",
+    "build": "node web/build.mjs",
+    "build:web": "node web/build.mjs",
+    "preview": "node server.js --dist",
+    "preview:web": "node server.js --dist",
+    "vercel:dev": "vercel dev",
+    "deploy:vercel": "vercel --prod"
+  },
+  "keywords": [
+    "downloader",
+    "pwa",
+    "vercel"
+  ],
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22"
+  }
+}

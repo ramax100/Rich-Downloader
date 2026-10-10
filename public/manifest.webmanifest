@@ -1,0 +1,20 @@
+{
+  "name": "Mori Web",
+  "short_name": "Mori",
+  "description": "Save videos, photos, and music from supported platforms in your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "orientation": "any",
+  "categories": ["utilities", "photo", "music"],
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "1080x1080",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
